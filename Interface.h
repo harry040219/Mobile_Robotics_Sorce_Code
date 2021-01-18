@@ -30,8 +30,7 @@ void write_gyro(unsigned char addr, unsigned char data);
 #define SLA             0x07
 
 extern volatile unsigned char rx1_flg, rx1_buff;
-extern volatile unsigned char psd_value[];
-
+extern volatile unsigned char psd[], g_psd[];
 
 void MCU_init(void);
 void Interface_init(void);

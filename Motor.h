@@ -81,4 +81,22 @@ void SetPosition(uint8_t motor, uint8_t mode, int32_t acc,int32_t velocity,int32
 
 void LM629_HW_Reset(void);
 
+
+//////// 아래 전부 추가 
+
+
+volatile extern double front, gyro,rearGyro,pos[];
+volatile extern long rearEnc[];
+
+void ResetEncoder();
+void GetEncoder(long *enc);
+void Polar(double x, double y, double z, double *data);
+void speed(double fy, double fx, double fz, double w_a);
+void Odometry();
+
+
+
+/////////////////////////////
+
+
 #endif      // __MOTOR_H
