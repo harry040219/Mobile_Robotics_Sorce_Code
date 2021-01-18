@@ -28,9 +28,7 @@
 							// 없으면 0
 
 
-unsigned char Cmd(unsigned char color, unsigned char cmd); // 이름 변경
-void Setting(unsigned char ins); // 추가하기 
-
+unsigned char Camera_Cmd(unsigned char color, unsigned char cmd);
 void Sensor_init(void);
 
 #endif      // __SENSOR_H

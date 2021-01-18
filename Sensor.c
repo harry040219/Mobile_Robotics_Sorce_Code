@@ -26,8 +26,8 @@ void Camera_init(void){
 	}
 }
 
-/// Cmd로 이름 변경 
-unsigned char Cmd(unsigned char color, unsigned char cmd)
+
+unsigned char Camera_Cmd(unsigned char color, unsigned char cmd)
 {	
 	volatile unsigned char buff=0, data=0;
 	
@@ -39,14 +39,6 @@ unsigned char Cmd(unsigned char color, unsigned char cmd)
 	
 	return buff;
 }
-
-/////////// Setting 추가
-void Setting(unsigned char ins){
-	while(Cmd(0,ins+10) != (ins-10)){
-		Cmd(0,ins);
-	}
-}
-
 
 // Function  : IR, PSD 센서를 초기화
 // Parameter : 없음
@@ -107,12 +99,7 @@ ISR(USART0_RX_vect)
             // 체크섬이 올바른지 체크 후 맞으면 전역변수로 이동
             if(chksum == buf[10])
                 for(i = 0 ; i < 10 ; i++)
-				{
-                    if(buf[i] == 10) continue;
-					psd[i] = buf[i];
-					g_psd[i] = (27/((double)psd[i]/100) - 4.5);
-					if(g_psd[i] > 80) g_psd[i] = 80;
-				}
+                    psd_value[i] = buf[i];
 
             //체크섬 리셋
             chksum = 0;

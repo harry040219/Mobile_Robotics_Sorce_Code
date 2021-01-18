@@ -144,9 +144,9 @@ void WriteDataFourByte(unsigned char motor, long data)
 // Return    : 없음
 void Motor_init(void)
 {
-    SetGain(MOTOR0, 16, 0, 64); ////////////// 16, 0, 64로 전부 변경
-    SetGain(MOTOR1, 16, 0, 64);
-    SetGain(MOTOR2, 16, 0, 64);
+    SetGain(MOTOR0, 7, 3, 1);
+    SetGain(MOTOR1, 7, 3, 1);
+    SetGain(MOTOR2, 7, 3, 1);
 	
 	/*
 	SetGain2(0,100,30,100,0x7FFF);
@@ -334,8 +334,8 @@ void LM629_HW_Reset(void){
 				}
 				else{
 					PORTC=0x00;
-					LCD(0,0,"STEP1");
-					LCD(1,0,"Error1. Restart");
+					lcd_display_str(0,0,"STEP1");
+					lcd_display_str(1,0,"Error1. Restart");
 				}
 				if((status[1]==0xC4||status[1]==0x84)){
 					step=1;
@@ -343,8 +343,8 @@ void LM629_HW_Reset(void){
 				}
 				else{
 					PORTC=0x00;
-					LCD(0,0,"STEP1");
-					LCD(2,0,"Error2. Restart");
+					lcd_display_str(0,0,"STEP1");
+					lcd_display_str(2,0,"Error2. Restart");
 				}
 				if( (status[2]==0xC4||status[2]==0x84) ){
 					step=1;
@@ -352,8 +352,8 @@ void LM629_HW_Reset(void){
 				}
 				else{
 					PORTC=0x00;
-					LCD(0,0,"STEP1");
-					LCD(3,0,"Error3. Restart");
+					lcd_display_str(0,0,"STEP1");
+					lcd_display_str(3,0,"Error3. Restart");
 				}
 			}
 		}
@@ -381,8 +381,8 @@ void LM629_HW_Reset(void){
 					step=0;	
 					MCUCR &= ~(1 << SRE) & ~(1 << SRW10);
 					PORTC=0x00;
-					LCD(0,0,"STEP2");
-					LCD(1,0,"Error1. Restart");
+					lcd_display_str(0,0,"STEP2");
+					lcd_display_str(1,0,"Error1. Restart");
 					break;
 				}
 				if((status[1]==0xC0||status[1]==0x80)){
@@ -393,8 +393,8 @@ void LM629_HW_Reset(void){
 					step=0;
 					MCUCR &= ~(1 << SRE) & ~(1 << SRW10);
 					PORTC=0x00;
-					LCD(0,0,"STEP2");
-					LCD(2,0,"Error2. Restart");
+					lcd_display_str(0,0,"STEP2");
+					lcd_display_str(2,0,"Error2. Restart");
 					break;
 				}
 				if((status[2]==0xC0||status[2]==0x80) ){
@@ -405,14 +405,14 @@ void LM629_HW_Reset(void){
 					step=0;
 					MCUCR &= ~(1 << SRE) & ~(1 << SRW10);
 					PORTC=0x00;
-					LCD(0,0,"STEP2");
-					LCD(3,0,"Error3. Restart");
+					lcd_display_str(0,0,"STEP2");
+					lcd_display_str(3,0,"Error3. Restart");
 					break;
 				}
 			}
 		}
 		if(step==2){
-			LCD(0,0,"Initialize success.");
+			lcd_display_str(0,0,"Initialize success.");
 			for(i=0;i<3;++i){
 				PORTB|=0x07;
 				_delay_ms(150);
@@ -425,119 +425,3 @@ void LM629_HW_Reset(void){
 	}
 }
 	
-
-////////////////// 아래 전부 추가 
-
-
-
-volatile double front, gyro,rearGyro,pos[3];
-volatile long rearEnc[3];
-
-
-
-void get_gyro(){
-	int yaw;
-	double now;
-
-	retry:
-	yaw=read_gyro(0x04);//YAW 상위8비트
-	yaw<<=8;
-	yaw|=read_gyro(0x05);//YAW 하위8비트
-	
-	now = yaw/100;
-
-	if(fabs(now) > 180) goto retry;
-
-	if(front == now) return;
-
-	if(now < 0 && front > 0){
-		if( ( fabs(now) + fabs(front) ) < 180)  gyro += now - front;
-		else								 	gyro += 359-(front-now);
-	}
-
-	else if(now > 0 && front < 0){
-		if( ( fabs(now) + fabs(front) ) < 180)	gyro += now-front;
-		else									gyro -= 359-(now-front);
-	}
-
-	else
-		gyro += now-  front;
-
-	front = now;
-}
-
-
-
-void ResetEncoder() // Define Home
-{
-	for(int i=0;i<3;i++)
-		WriteCommand(i,DFH);
-}
-
-void GetEncoder(long *enc)
-{
-	for(int m = 0; m < 3; m++)	// Motor 0 ~ Motor 2
-	{
-		enc[m] = 0;
-		WriteCommand(m, RDRP);
-		for(int i = 0; i < 4; i++)	// 4Byte shift
-		{			
-			enc[m] |= ReadData(m);
-			if(i != 3) enc[m] <<= 8;
-		}
-	}
-}
-
-void Polar(double x, double y, double z, double *data)
-{
-	double theta = atan2(y, x) - (z * cha);
-	double vector = hypot(x, y);
-	data[0] = vector * cos(theta);
-	data[1] = vector * sin(theta);
-}
-
-void speed(double fy, double fx, double fz, double w_a) 
-{
-   double v[3],ra1[3],ra2[3],da1=720-w_a,da2;
-   int a=150;
-
-   if(w_a<=180)   da1 -= 360;
-   da2 = da1 - 90;
-   
-   for(int i = 0; i < 3; i++) {
-      ra1[i] = (a-da1)*cha;
-      ra2[i] = (a-da2)*cha;
-      a = (a+120)%360;
-      v[i] = fx * cos(ra1[i]) + fy * cos(ra2[i]) - fz * (25 * M_PI / 360);
-   	  SetVelocity(i, v[i] * 16777.216 * -2.55);
-   }
-
-   StartMotion();
-   get_gyro();
-}
-
-void Odometry()
-{
-   double rpm[3], distance[3], g;
-   long enc[3];
-
-   GetEncoder(enc);
-
-   for(int i = 0; i < 3; i++)
-   {
-      rpm[i] = (enc[i] - rearEnc[i]) * ((8 * M_PI) / 48500);
-      rearEnc[i] = enc[i];
-   }
-
-   g = gyro - rearGyro;
-   rearGyro = gyro;
-
-   double x = ( (rpm[0] + rpm[2]) / 2 - rpm[1] ) /1.5;
-   double y = ( rpm[0] - rpm[2] ) / 2 / cos( 30 * cha );      
-   pos[2] -= g;
-
-   Polar(x, y, -pos[2], distance);
-
-   pos[0] += distance[0];
-   pos[1] += distance[1];      
-}
