@@ -6,7 +6,7 @@
 /************************************************************************************************************/
 #include "Interface.h"
 
-volatile unsigned char psd[10], g_psd[10]; // 이름 변경 
+volatile unsigned char psd_value[10];
 volatile unsigned char rx1_flg=0, rx1_buff=0;
 
 
@@ -78,7 +78,7 @@ void Interface_init(void)
 {
     // LCD / EX I/O Expander
 	TWDR = 0xFF;
-	TWBR = 0x41; /// 이거 41 = 100khz임 
+	TWBR = 0x48;
 
 	LM629_HW_Reset();
 	Sensor_init();
@@ -92,9 +92,6 @@ void Interface_init(void)
 	
 	DDRB=0x0F;
 	DDRD&=~0x0F;
-
-	DDRC |= 0xf0; ///// 추가 
-	PORTB = 0; ///// 추가 
 }
 
 // Function  : MCU 초기화.
@@ -154,16 +151,16 @@ void lcd_write_data(unsigned char data){
      // 시작
      TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTA);
      // 준비상태 체크
-     _delay_us(200); ///// while문 _delay_us(200)으로 변경 
+     while(!(TWCR & (1 << TWINT))){_delay_us(100); if(++n>500) break;}
      // 주소 전송
      TWDR = SLA << 1;
      TWCR = (1 << TWINT) | (1 << TWEN);
      n=0;
-     _delay_us(200); ///// while문 _delay_us(200)으로 변경 
+     while(!(TWCR & (1 << TWINT))){_delay_us(100); if(++n>500) break;}	
      TWDR = data;
      TWCR = (1 << TWINT) | (1 << TWEN);
      n=0;
-     _delay_us(200); ///// while문 _delay_us(200)으로 변경 
+     while(!(TWCR & (1 << TWINT))){_delay_us(100); if(++n>500) break;}	
      // 정지
      TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
 }
@@ -173,10 +170,7 @@ void lcd_write_data(unsigned char data){
 //          line   - 출력할 라인번호(0~3)
 //          string - 출력할 문자열(최대 20자)
 // Return    : 없음
-
-
-//// lcd_display_str => LCD로 변경하기 
-void LCD(unsigned char Y_line, unsigned char X_line,char *string) //lcd 스트링데이터 쓰기
+void lcd_display_str(unsigned char Y_line, unsigned char X_line,char *string) //lcd 스트링데이터 쓰기
 {
     int i=X_line;
 
