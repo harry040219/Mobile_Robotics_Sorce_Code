@@ -81,4 +81,17 @@ void SetPosition(uint8_t motor, uint8_t mode, int32_t acc,int32_t velocity,int32
 
 void LM629_HW_Reset(void);
 
+
+//////// 아래 전부 추가 
+
+volatile extern double front, gyro,pos[],rearGyro;
+
+void get_gyro();
+void speed(double fy, double fx, double fz, double w_a);
+void wrcm(double xs, double ys, double ang);
+
+
+/////////////////////////////
+
+
 #endif      // __MOTOR_H

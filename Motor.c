@@ -144,9 +144,9 @@ void WriteDataFourByte(unsigned char motor, long data)
 // Return    : 없음
 void Motor_init(void)
 {
-    SetGain(MOTOR0, 7, 3, 1);
-    SetGain(MOTOR1, 7, 3, 1);
-    SetGain(MOTOR2, 7, 3, 1);
+    SetGain(MOTOR0, 16, 0, 64); ////////////// 16, 0, 64로 전부 변경
+    SetGain(MOTOR1, 16, 0, 64);
+    SetGain(MOTOR2, 16, 0, 64);
 	
 	/*
 	SetGain2(0,100,30,100,0x7FFF);
@@ -334,8 +334,8 @@ void LM629_HW_Reset(void){
 				}
 				else{
 					PORTC=0x00;
-					lcd_display_str(0,0,"STEP1");
-					lcd_display_str(1,0,"Error1. Restart");
+					LCD(0,0,"STEP1");
+					LCD(1,0,"Error1. Restart");
 				}
 				if((status[1]==0xC4||status[1]==0x84)){
 					step=1;
@@ -343,8 +343,8 @@ void LM629_HW_Reset(void){
 				}
 				else{
 					PORTC=0x00;
-					lcd_display_str(0,0,"STEP1");
-					lcd_display_str(2,0,"Error2. Restart");
+					LCD(0,0,"STEP1");
+					LCD(2,0,"Error2. Restart");
 				}
 				if( (status[2]==0xC4||status[2]==0x84) ){
 					step=1;
@@ -352,8 +352,8 @@ void LM629_HW_Reset(void){
 				}
 				else{
 					PORTC=0x00;
-					lcd_display_str(0,0,"STEP1");
-					lcd_display_str(3,0,"Error3. Restart");
+					LCD(0,0,"STEP1");
+					LCD(3,0,"Error3. Restart");
 				}
 			}
 		}
@@ -381,8 +381,8 @@ void LM629_HW_Reset(void){
 					step=0;	
 					MCUCR &= ~(1 << SRE) & ~(1 << SRW10);
 					PORTC=0x00;
-					lcd_display_str(0,0,"STEP2");
-					lcd_display_str(1,0,"Error1. Restart");
+					LCD(0,0,"STEP2");
+					LCD(1,0,"Error1. Restart");
 					break;
 				}
 				if((status[1]==0xC0||status[1]==0x80)){
@@ -393,8 +393,8 @@ void LM629_HW_Reset(void){
 					step=0;
 					MCUCR &= ~(1 << SRE) & ~(1 << SRW10);
 					PORTC=0x00;
-					lcd_display_str(0,0,"STEP2");
-					lcd_display_str(2,0,"Error2. Restart");
+					LCD(0,0,"STEP2");
+					LCD(2,0,"Error2. Restart");
 					break;
 				}
 				if((status[2]==0xC0||status[2]==0x80) ){
@@ -405,14 +405,14 @@ void LM629_HW_Reset(void){
 					step=0;
 					MCUCR &= ~(1 << SRE) & ~(1 << SRW10);
 					PORTC=0x00;
-					lcd_display_str(0,0,"STEP2");
-					lcd_display_str(3,0,"Error3. Restart");
+					LCD(0,0,"STEP2");
+					LCD(3,0,"Error3. Restart");
 					break;
 				}
 			}
 		}
 		if(step==2){
-			lcd_display_str(0,0,"Initialize success.");
+			LCD(0,0,"Initialize success.");
 			for(i=0;i<3;++i){
 				PORTB|=0x07;
 				_delay_ms(150);
@@ -425,3 +425,83 @@ void LM629_HW_Reset(void){
 	}
 }
 	
+
+////////////////// 아래 전부 추가 
+
+
+volatile double front, gyro,rearGyro,pos[3];
+
+
+
+void get_gyro(){
+	int yaw, ck=0;
+	double now;
+
+	retry:
+	yaw=read_gyro(0x04);//YAW 상위8비트
+	yaw<<=8;
+	yaw|=read_gyro(0x05);//YAW 하위8비트
+	//PSM_CMD=read_gyro(0x1E); //명령어읽기
+	now = yaw/100;
+
+	if(fabs(now) > 180) goto retry;
+
+	if(front == now) return;
+
+	if(now < 0 && front > 0){
+		if( ( fabs(now) + fabs(front) ) < 180)  gyro -= front-now,ck=1;
+		else								 	gyro += 359-(front-now),ck=1;
+	}
+
+	else if(now > 0 && front < 0){
+		if( ( fabs(now) + fabs(front) ) < 180)	gyro += now-front,ck=1;
+		else									gyro -= 359-(now-front),ck=1;
+	}
+
+	else if(!ck){
+		if(now > front)	gyro += now-front;
+		else if(now < front) gyro -= front-now;
+	}
+
+	front = now;
+}
+
+
+
+void speed(double fy, double fx, double fz, double w_a) 
+{
+   double v[3] ,ra1[3],ra2[3],da1=720-w_a,da2;
+   int a=150;
+   sgx=fx,sgy=fy,sga=w_a;
+
+   if(w_a<=180)   da1 -= 360;
+   da2 = da1 - 90;
+   
+   for(int i = 0; i < 3; i++) {
+      ra1[i] = (a-da1)*cha;
+      ra2[i] = (a-da2)*cha;
+      a = (a+120)%360;
+      v[i] = fx * cos(ra1[i]) + fy * cos(ra2[i]) - fz * (25 * M_PI / 360);
+	   	SetVelocity(i, v[i] * 16777.216 * -2.55);
+   }
+
+   StartMotion();
+   get_gyro();
+}
+
+
+void wrcm(double xs, double ys, double ang)
+{
+	double p[2] = {xs/100,ys/100},ane = 0, g;
+	
+	g = rearGyro - gyro;
+   	rearGyro = gyro;
+	pos[2] += g;
+
+	if(xs || ys)
+	{
+		ane = pos[2] - ang;
+		pos[0] += p[0] * cos(ane * cha) + p[1] * cos((ane + 90) * cha);
+		pos[1] += p[1] * cos(ane * cha) + p[0] * cos((ane - 90) * cha);
+	}
+}
